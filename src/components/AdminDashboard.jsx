@@ -22,6 +22,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationsRef = useRef(null);
   const [incidencias, setIncidencias] = useState([]);
+  const [showEquipajeForm, setShowEquipajeForm] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -56,16 +57,17 @@ export default function AdminDashboard({ user, onLogout }) {
         // Generar notificaciones para incidencias activas
         const activas = (incidenciasData || []).filter(inc => inc.estado === 'activa');
         if (activas.length > 0) {
-          setNotifications(prev => [
-            ...activas.map(inc => ({
+          setNotifications(prev => {
+            const newNotifs = activas.map(inc => ({
               id: `inc-${inc.id}`,
               text: `Recordatorio: Incidencia activa - ${inc.titulo}`,
               type: 'incidencia',
               read: false,
               desc: inc.descripcion
-            })),
-            ...prev
-          ]);
+            }));
+            const filteredPrev = prev.filter(p => !newNotifs.some(n => n.id === p.id));
+            return [...newNotifs, ...filteredPrev];
+          });
         }
       })
       .catch(err => {
@@ -136,6 +138,7 @@ export default function AdminDashboard({ user, onLogout }) {
       setNotifications(prev => [{ id: Date.now(), text: `Nuevo equipaje sobrante registrado (Ticket: ${newEquipajeTicket})`, type: 'equipaje', read: false, desc: newEquipajeDesc }, ...prev]);
       setNewEquipajeTicket('');
       setNewEquipajeDesc('');
+      setShowEquipajeForm(false);
       alert("✅ Equipaje sobrante guardado correctamente.");
     } catch (err) {
       console.error("Error creando equipaje:", err);
@@ -638,80 +641,95 @@ export default function AdminDashboard({ user, onLogout }) {
               <Briefcase size={24} color="var(--primary-color)" /> Gestión de Equipajes Sobrantes
             </h3>
 
-            {/* Formulario para agregar equipaje */}
-            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
-              <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Registrar Equipaje</h4>
-              <form onSubmit={handleCreateEquipaje} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Número de Ticket (Ej: T-0098)"
-                    value={newEquipajeTicket}
-                    onChange={(e) => setNewEquipajeTicket(e.target.value)}
-                    required
-                  />
-                </div>
-                <div style={{ flex: '2', minWidth: '300px' }}>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Descripción (Ej: Maleta negra grande, marca Samsonite)"
-                    value={newEquipajeDesc}
-                    onChange={(e) => setNewEquipajeDesc(e.target.value)}
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ width: 'auto' }}
-                  disabled={savingEquipaje}
-                >
-                  {savingEquipaje ? 'Guardando...' : 'Registrar'}
-                </button>
-              </form>
-            </div>
+            {/* Botón o Formulario para agregar equipaje */}
+            {!showEquipajeForm ? (
+              <button
+                className="btn btn-primary"
+                style={{ marginBottom: '2rem' }}
+                onClick={() => setShowEquipajeForm(true)}
+              >
+                <PlusCircle size={18} style={{ marginRight: '0.5rem' }} /> Nuevo Registro de Equipaje
+              </button>
+            ) : (
+              <div className="glass-panel animate-fade-in" style={{ padding: '2rem', marginBottom: '2rem' }}>
+                <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Registrar Equipaje
+                  <button onClick={() => setShowEquipajeForm(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem' }}>✖ Cerrar</button>
+                </h4>
+                <form onSubmit={handleCreateEquipaje} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1', minWidth: '200px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Número de Ticket (Ej: T-0098)"
+                      value={newEquipajeTicket}
+                      onChange={(e) => setNewEquipajeTicket(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: '2', minWidth: '300px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Descripción (Ej: Maleta negra grande, marca Samsonite)"
+                      value={newEquipajeDesc}
+                      onChange={(e) => setNewEquipajeDesc(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    style={{ width: 'auto' }}
+                    disabled={savingEquipaje}
+                  >
+                    {savingEquipaje ? 'Guardando...' : 'Registrar'}
+                  </button>
+                </form>
+              </div>
+            )}
 
             {/* Lista de equipajes */}
-            <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-              <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--surface-border)', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Equipajes en resguardo ({equipajes.length})</h4>
-              </div>
+            {!showEquipajeForm && (
+              <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--surface-border)', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Equipajes en resguardo ({equipajes.length})</h4>
+                </div>
 
-              {equipajes.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  <Briefcase size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
-                  <p>No hay equipajes sobrantes registrados actualmente.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', padding: '1.5rem' }}>
-                  {equipajes.map((eq) => (
-                    <div key={eq.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--surface-border)', position: 'relative' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                        <div>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>TICKET</span>
-                          <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', margin: '0' }}>{eq.ticket}</h4>
+                {equipajes.length === 0 ? (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <Briefcase size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+                    <p>No hay equipajes sobrantes registrados actualmente.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', padding: '1.5rem' }}>
+                    {equipajes.map((eq) => (
+                      <div key={eq.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--surface-border)', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>TICKET</span>
+                            <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', margin: '0' }}>{eq.ticket}</h4>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteEquipaje(eq.id)}
+                            style={{ background: 'rgba(30, 107, 214, 0.1)', border: 'none', color: 'var(--primary-color)', padding: '0.4rem 0.6rem', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.8rem', fontWeight: 'bold' }}
+                            title="Marcar como entregado/retirado"
+                            onMouseOver={(e) => { e.currentTarget.style.background = 'var(--primary-color)'; e.currentTarget.style.color = '#000'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(30, 107, 214, 0.1)'; e.currentTarget.style.color = 'var(--primary-color)'; }}
+                          >
+                            Entregar
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleDeleteEquipaje(eq.id)}
-                          style={{ background: 'rgba(30, 107, 214, 0.1)', border: 'none', color: 'var(--primary-color)', padding: '0.4rem 0.6rem', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.8rem', fontWeight: 'bold' }}
-                          title="Marcar como entregado/retirado"
-                          onMouseOver={(e) => { e.currentTarget.style.background = 'var(--primary-color)'; e.currentTarget.style.color = '#000'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(30, 107, 214, 0.1)'; e.currentTarget.style.color = 'var(--primary-color)'; }}
-                        >
-                          Entregar
-                        </button>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.5rem 0', lineHeight: '1.4' }}>{eq.descripcion}</p>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6 }}>
+                          Registrado: {new Date(eq.fecha).toLocaleDateString()}
+                        </div>
                       </div>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.5rem 0', lineHeight: '1.4' }}>{eq.descripcion}</p>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6 }}>
-                        Registrado: {new Date(eq.fecha).toLocaleDateString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
         )}
 
