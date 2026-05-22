@@ -19,3 +19,11 @@ CREATE TABLE IF NOT EXISTS inventarios_historial (
 INSERT INTO inventario_actual (sistema_data, fisico_data)
 SELECT '[]', '[]'
 WHERE NOT EXISTS (SELECT 1 FROM inventario_actual);
+
+CREATE TABLE IF NOT EXISTS incidencias (
+  id SERIAL PRIMARY KEY,
+  titulo VARCHAR(200) NOT NULL,
+  descripcion TEXT NOT NULL,
+  estado VARCHAR(20) DEFAULT 'activa',
+  fecha_creacion TIMESTAMP DEFAULT NOW()
+);

@@ -6,6 +6,8 @@ const pool = require('./db');
 const inventarioRoutes = require('./routes/inventario');
 const encomiendaRoutes = require('./routes/encomiendas');
 const userRoutes = require('./routes/usuarios');
+const equipajeRoutes = require('./routes/equipajes');
+const incidenciasRoutes = require('./routes/incidencias');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,6 +19,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api', inventarioRoutes);
 app.use('/api/encomiendas', encomiendaRoutes);
 app.use('/api/usuarios', userRoutes);
+app.use('/api/equipajes', equipajeRoutes);
+app.use('/api/incidencias', incidenciasRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
@@ -47,6 +51,23 @@ async function initDB() {
         boleta VARCHAR(100) NOT NULL,
         descripcion TEXT NOT NULL,
         fecha TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS equipajes_sobrantes (
+        id SERIAL PRIMARY KEY,
+        ticket VARCHAR(100) NOT NULL,
+        descripcion TEXT NOT NULL,
+        fecha TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS incidencias (
+        id SERIAL PRIMARY KEY,
+        titulo VARCHAR(200) NOT NULL,
+        descripcion TEXT NOT NULL,
+        estado VARCHAR(20) DEFAULT 'activa',
+        fecha_creacion TIMESTAMP DEFAULT NOW()
       );
     `);
     await pool.query(`

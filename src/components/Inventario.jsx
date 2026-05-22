@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Database, ScanLine, FileBarChart, PlusCircle, Trash2, AlertTriangle, CheckCircle, PackageSearch, Upload, Printer, Archive, ChevronDown, ChevronRight, WifiOff } from 'lucide-react';
+import { Database, ScanLine, FileBarChart, PlusCircle, Trash2, AlertTriangle, CheckCircle, PackageSearch, Upload, Printer, Archive, ChevronDown, ChevronRight, WifiOff, FileSpreadsheet, UploadCloud, Info } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const API = 'http://localhost:3001/api';
 const STORAGE_KEY = 'efra_inventarios_historial';
@@ -19,9 +20,13 @@ export default function Inventario() {
   const [historialExpandido, setHistorialExpandido] = useState(null);
 
   // Input States
-  const [pasteInput, setPasteInput] = useState('');
   const [fisicoInput, setFisicoInput] = useState('');
   const [sectionToPrint, setSectionToPrint] = useState(null);
+  
+  // Excel Import States
+  const [importing, setImporting] = useState(false);
+  const [showExcelInfo, setShowExcelInfo] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Cargar datos al montar desde la API (con fallback a localStorage)
   useEffect(() => {
@@ -115,36 +120,47 @@ export default function Inventario() {
   };
 
   // --- LÓGICA DE SISTEMA ---
-  const handleParseExcel = () => {
-    if (!pasteInput.trim()) return;
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-    const rows = pasteInput.trim().split('\n');
-    const parsedData = [];
-
-    // Asumimos que no hay cabeceras, o si las hay, el usuario las pegó. 
-    // Para ser seguros, si la primera fila parece cabecera, la saltamos? 
-    // Mejor parseamos todo y si falta una columna requerida lo marcamos como error.
-
-    rows.forEach((row, index) => {
-      const columns = row.split('\t').map(col => col.trim());
-      // Requerimos al menos las 7 columnas: fecha, tipo boleta, nro boleta, tipo pago, consignado, descripcion, monto
-      if (columns.length >= 7) {
-        parsedData.push({
+    setImporting(true);
+    
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        
+        // Filtrar filas vacías (que tengan al menos un dato) y quitar los encabezados
+        const rows = data.slice(1).filter(row => row.some(cell => cell !== undefined && cell !== null && cell !== ''));
+        
+        const parsedData = rows.map((row, index) => ({
           id: `sys-${Date.now()}-${index}`,
-          fecha: columns[0],
-          tipoBoleta: columns[1],
-          nroBoleta: columns[2],
-          tipoPago: columns[3],
-          consignado: columns[4],
-          descripcion: columns[5],
-          monto: columns[6]
-        });
+          fecha: row[0] || '',
+          tipoBoleta: row[1] || '',
+          nroBoleta: row[2] || `S/N-${Date.now()}-${index}`,
+          tipoPago: row[3] || '',
+          consignado: row[4] || '',
+          descripcion: row[5] || '',
+          monto: row[6] || ''
+        }));
+        
+        setSistemaData([...sistemaData, ...parsedData]);
+        alert(`✅ Se importaron ${parsedData.length} encomiendas al sistema correctamente.`);
+      } catch (error) {
+        console.error("Error procesando Excel", error);
+        alert("❌ Ocurrió un error al procesar el archivo Excel.");
+      } finally {
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
-    });
-
-    setSistemaData([...sistemaData, ...parsedData]);
-    setPasteInput('');
-    alert(`Se agregaron ${parsedData.length} registros al sistema.`);
+    };
+    reader.readAsBinaryString(file);
   };
 
   const handleClearSistema = () => {
@@ -336,24 +352,58 @@ export default function Inventario() {
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
                 <Database color="var(--primary-color)" /> Datos del Sistema
               </h3>
-              <span style={{ background: 'rgba(102, 252, 241, 0.1)', color: 'var(--primary-color)', padding: '0.3rem 0.8rem', borderRadius: '1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
+              <span style={{ background: 'rgba(30, 107, 214, 0.1)', color: 'var(--primary-color)', padding: '0.3rem 0.8rem', borderRadius: '1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
                 Total: {sistemaData.length}
               </span>
             </div>
 
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Pegar datos desde Excel (7 columnas obligatorias: Fecha, Tipo Boleta, Nro Boleta, Tipo Pago, Consignado, Descripcion, Monto)</label>
-              <textarea
-                value={pasteInput}
-                onChange={(e) => setPasteInput(e.target.value)}
-                placeholder="Pega aquí las filas de tu Excel..."
-                style={{ width: '100%', height: '120px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--surface-border)', color: 'var(--text-primary)', padding: '1rem', borderRadius: '8px', fontFamily: 'monospace', resize: 'vertical' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button className="btn btn-primary" onClick={handleParseExcel} disabled={!pasteInput.trim()}>
-                  <Upload size={18} style={{ marginRight: '0.5rem' }} /> Cargar Datos
-                </button>
+            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem 1.5rem', borderRadius: '12px', border: '1px solid var(--surface-border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ padding: '0.6rem', background: 'rgba(30, 107, 214, 0.1)', borderRadius: '10px', color: 'var(--primary-color)' }}>
+                    <FileSpreadsheet size={24} />
+                  </div>
+                  <h4 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--text-primary)' }}>
+                    Importación Masiva
+                  </h4>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <input 
+                    type="file" 
+                    accept=".xlsx, .xls" 
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                    id="excel-upload-inv"
+                    disabled={importing}
+                  />
+                  <label 
+                    htmlFor="excel-upload-inv" 
+                    className="btn btn-primary" 
+                    style={{ width: 'auto', display: 'inline-flex', cursor: importing ? 'not-allowed' : 'pointer', opacity: importing ? 0.7 : 1, padding: '0.5rem 1rem', fontSize: '0.9rem', margin: 0 }}
+                  >
+                    <UploadCloud size={16} /> {importing ? 'Procesando...' : 'Seleccionar Archivo'}
+                  </label>
+                  
+                  <button 
+                    onClick={() => setShowExcelInfo(!showExcelInfo)}
+                    style={{ background: showExcelInfo ? 'rgba(30, 107, 214, 0.2)' : 'transparent', border: '1px solid var(--surface-border)', color: 'var(--text-secondary)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                    title="Información de formato"
+                  >
+                    <Info size={18} color={showExcelInfo ? 'var(--primary-color)' : 'currentColor'} />
+                  </button>
+                </div>
               </div>
+
+              {showExcelInfo && (
+                <div className="animate-fade-in" style={{ padding: '1rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', borderLeft: '3px solid var(--primary-color)' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0, lineHeight: '1.5' }}>
+                    Sube tu archivo `.xlsx` con el orden exacto de columnas:<br/>
+                    <strong style={{ color: 'var(--text-primary)' }}>Fecha | Tipo Boleta | Nro Boleta | Tipo Pago | Consignado | Descripción | Monto</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             {sistemaData.length > 0 && (
@@ -406,15 +456,14 @@ export default function Inventario() {
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
                 <ScanLine color="var(--primary-color)" /> Encomiendas Físicas
               </h3>
-              <span style={{ background: 'rgba(102, 252, 241, 0.1)', color: 'var(--primary-color)', padding: '0.3rem 0.8rem', borderRadius: '1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
+              <span style={{ background: 'rgba(30, 107, 214, 0.1)', color: 'var(--primary-color)', padding: '0.3rem 0.8rem', borderRadius: '1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
                 Total: {fisicoData.length}
               </span>
             </div>
 
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
-              <form onSubmit={handleAddFisico} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'flex-start' }}>
+              <form onSubmit={handleAddFisico} style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '50%', minWidth: '300px' }}>
                 <div style={{ flex: 1 }}>
-                  <label htmlFor="fisicoInput" style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Ingresar Número de Boleta/Encomienda</label>
                   <input
                     id="fisicoInput"
                     type="text"
@@ -422,11 +471,12 @@ export default function Inventario() {
                     onChange={(e) => setFisicoInput(e.target.value)}
                     placeholder="Ej: B001-0012345"
                     className="input-field"
+                    style={{ padding: '0.9rem 1.2rem', fontSize: '1.1rem', letterSpacing: '1px' }}
                     autoFocus
                   />
                 </div>
-                <button type="submit" className="btn btn-primary" disabled={!fisicoInput.trim()}>
-                  <PlusCircle size={18} /> Agregar
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.9rem 1.5rem', fontSize: '1rem', width: 'auto' }} disabled={!fisicoInput.trim()}>
+                  <PlusCircle size={20} /> Agregar
                 </button>
               </form>
             </div>

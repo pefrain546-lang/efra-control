@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, Trash2, Edit, Save, X, Shield, User } from 'lucide-react';
 
+
 const API = 'http://localhost:3001/api/usuarios';
 
 export default function Configuraciones() {
@@ -15,6 +16,7 @@ export default function Configuraciones() {
     nombre: '',
     role: 'usuario'
   });
+
 
   const fetchUsuarios = async () => {
     try {
@@ -77,7 +79,7 @@ export default function Configuraciones() {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <h2 style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <Shield color="var(--primary-color)" /> Gestión de Usuarios
+        <Shield color="var(--primary-color)" /> Configuración del Sistema
       </h2>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '2rem' }}>
