@@ -23,6 +23,10 @@ export default function AdminDashboard({ user, onLogout }) {
   const notificationsRef = useRef(null);
   const [incidencias, setIncidencias] = useState([]);
   const [showEquipajeForm, setShowEquipajeForm] = useState(false);
+  const [showIncidenciaForm, setShowIncidenciaForm] = useState(false);
+  const [newIncidenciaTitulo, setNewIncidenciaTitulo] = useState('');
+  const [newIncidenciaDesc, setNewIncidenciaDesc] = useState('');
+  const [savingIncidencia, setSavingIncidencia] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -35,11 +39,12 @@ export default function AdminDashboard({ user, onLogout }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  const [newIncidenciaTitulo, setNewIncidenciaTitulo] = useState('');
-  const [newIncidenciaDesc, setNewIncidenciaDesc] = useState('');
-  const [savingIncidencia, setSavingIncidencia] = useState(false);
 
-  const isAdmin = user.role === 'admin';
+  // Resetear formularios al cambiar de pestaña
+  useEffect(() => {
+    setShowEquipajeForm(false);
+    setShowIncidenciaForm(false);
+  }, [activeTab]);
 
   // Cargar datos al montar
   useEffect(() => {
@@ -177,6 +182,7 @@ export default function AdminDashboard({ user, onLogout }) {
       setNotifications(prev => [{ id: `inc-${data.id}`, text: `Nueva incidencia: ${data.titulo}`, type: 'incidencia', read: false, desc: data.descripcion }, ...prev]);
       setNewIncidenciaTitulo('');
       setNewIncidenciaDesc('');
+      setShowIncidenciaForm(false);
       alert("✅ Incidencia registrada correctamente.");
     } catch (err) {
       console.error("Error creando incidencia:", err);
@@ -209,6 +215,8 @@ export default function AdminDashboard({ user, onLogout }) {
       console.error("Error eliminando incidencia:", err);
     }
   };
+
+  const isAdmin = user.role === 'admin';
 
   return (
     <div className="dashboard-layout animate-fade-in">
@@ -739,55 +747,69 @@ export default function AdminDashboard({ user, onLogout }) {
               <Bell size={24} color="var(--danger-color)" /> Gestión de Incidencias
             </h3>
 
-            {/* Formulario para agregar incidencia */}
-            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
-              <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Nueva Incidencia / Recordatorio</h4>
-              <form onSubmit={handleCreateIncidencia} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1', minWidth: '200px' }}>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Título (Ej: Encomienda BOL-0102 no llega)"
-                    value={newIncidenciaTitulo}
-                    onChange={(e) => setNewIncidenciaTitulo(e.target.value)}
-                    required
-                  />
-                </div>
-                <div style={{ flex: '2', minWidth: '300px' }}>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Descripción (Detalles del seguimiento)"
-                    value={newIncidenciaDesc}
-                    onChange={(e) => setNewIncidenciaDesc(e.target.value)}
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ width: 'auto', background: 'var(--danger-color)' }}
-                  disabled={savingIncidencia}
-                >
-                  {savingIncidencia ? 'Guardando...' : 'Crear Recordatorio'}
-                </button>
-              </form>
-            </div>
+            {/* Botón o Formulario para agregar incidencia */}
+            {!showIncidenciaForm ? (
+              <button
+                className="btn btn-primary"
+                style={{ marginBottom: '2rem', background: 'var(--danger-color)' }}
+                onClick={() => setShowIncidenciaForm(true)}
+              >
+                <PlusCircle size={18} style={{ marginRight: '0.5rem' }} /> Nueva Incidencia / Recordatorio
+              </button>
+            ) : (
+              <div className="glass-panel animate-fade-in" style={{ padding: '2rem', marginBottom: '2rem' }}>
+                <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Nueva Incidencia / Recordatorio
+                  <button onClick={() => setShowIncidenciaForm(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem', padding: '0.2rem' }}>✖ Cerrar</button>
+                </h4>
+                <form onSubmit={handleCreateIncidencia} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1', minWidth: '200px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Título (Ej: Encomienda BOL-0102 no llega)"
+                      value={newIncidenciaTitulo}
+                      onChange={(e) => setNewIncidenciaTitulo(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: '2', minWidth: '300px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Descripción (Detalles del seguimiento)"
+                      value={newIncidenciaDesc}
+                      onChange={(e) => setNewIncidenciaDesc(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    style={{ width: 'auto', background: 'var(--danger-color)' }}
+                    disabled={savingIncidencia}
+                  >
+                    {savingIncidencia ? 'Guardando...' : 'Crear Recordatorio'}
+                  </button>
+                </form>
+              </div>
+            )}
 
             {/* Lista de incidencias */}
-            <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-              <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--surface-border)', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Registro de Incidencias</h4>
-              </div>
-
-              {incidencias.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  <Bell size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
-                  <p>No hay incidencias registradas. Todo en orden.</p>
+            {!showIncidenciaForm && (
+              <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--surface-border)', background: 'rgba(0,0,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Registro de Incidencias</h4>
                 </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', padding: '1.5rem' }}>
-                  {incidencias.map((inc) => (
+
+                {incidencias.length === 0 ? (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <Bell size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+                    <p>No hay incidencias registradas. Todo en orden.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem', padding: '1.5rem' }}>
+                    {incidencias.map((inc) => (
                     <div key={inc.id} style={{ background: inc.estado === 'activa' ? 'rgba(255, 75, 75, 0.05)' : 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: inc.estado === 'activa' ? '1px solid var(--danger-color)' : '1px solid var(--surface-border)', position: 'relative' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                         <div>
@@ -825,7 +847,8 @@ export default function AdminDashboard({ user, onLogout }) {
                   ))}
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </section>
         )}
 
