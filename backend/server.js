@@ -106,6 +106,6 @@ async function initDB() {
 
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log(`🚀 Backend corriendo en http://localhost:${PORT}`);
+    console.log(`🚀 Backend corriendo en https://efra-control.onrender.com:${PORT}`);
   });
 });
