@@ -13,7 +13,7 @@ export default function Login({ onLogin }) {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:3001/api/usuarios/login', {
+      const res = await fetch('https://efra-control.onrender.com/api/usuarios/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
