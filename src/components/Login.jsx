@@ -13,6 +13,7 @@ export default function Login({ onLogin }) {
     setIsLoading(true);
 
     try {
+      console.log(username, password);
       const res = await fetch('https://efra-control.onrender.com/api/usuarios/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -20,7 +21,7 @@ export default function Login({ onLogin }) {
       });
       
       const data = await res.json();
-      
+      console.log(data);
       if (!res.ok) {
         throw new Error(data.error || 'Error al iniciar sesión');
       }
