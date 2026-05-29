@@ -1,7 +1,7 @@
+const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
-const cors = require('cors');
 const pool = require('./db');
 const inventarioRoutes = require('./routes/inventario');
 const encomiendaRoutes = require('./routes/encomiendas');
@@ -10,9 +10,10 @@ const equipajeRoutes = require('./routes/equipajes');
 const incidenciasRoutes = require('./routes/incidencias');
 
 const app = express();
+app.use(cors());
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+
 app.use(express.json({ limit: '10mb' }));
 
 // Rutas
